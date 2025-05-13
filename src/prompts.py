@@ -2,7 +2,7 @@ import pandas as pd
 import ollama
 import time
 
-df = pd.read_csv('B2W-Reviews01.csv')
+df = pd.read_csv('src/B2W-Reviews01.csv')
 
 df = df.dropna(subset=['review_text'])
 df['clean_text'] = df['review_text'].str.lower().str.replace('[^\w\s]', ' ', regex=True)
@@ -31,15 +31,35 @@ Resposta:
 def montar_prompt_sumarizacao(lista_de_comentarios):
     comentarios_formatados = "\n".join([f"- {comentario}" for comentario in lista_de_comentarios])
     return f"""
-Você é um assistente de IA que analisa múltiplos comentários de clientes sobre produtos de e-commerce.
+Você é um assistente de IA especializado em analisar comentários de clientes de e-commerce.
 
-Sua tarefa é gerar um resumo estratégico com base nos comentários abaixo. Siga as etapas:
+Sua tarefa é gerar um relatório estratégico a partir dos comentários listados abaixo, seguindo estas etapas:
 
-1. Leia todos os comentários cuidadosamente.
-2. Identifique os principais *insights* mencionados, como: entrega (prazo, problemas), embalagem, qualidade do produto, usabilidade, atendimento, preço, entre outros.
-3. Para cada insight identificado, indique quantas vezes ele foi mencionado e resuma o que foi dito.
-4. Por fim, escreva um resumo geral e estratégico com base nessa análise, útil para as áreas de produto, atendimento ou logística da empresa.
-Comentários:
+1. **Agrupar Comentários**  
+   - Organize os comentários em grupos com base em **produto**, **marca**, **categoria** (e quaisquer outros atributos relevantes que você identificar).  
+   - Cada comentário deve pertencer a exatamente um grupo.
+
+2. **Extrair Insights por Grupo**  
+   Para cada grupo (produto/marca/categoria):  
+   a. Identifique os principais tópicos mencionados, tais como:  
+      - **Entrega** (prazo, avarias, rastreamento)  
+      - **Embalagem** (proteção, apresentação)  
+      - **Qualidade do Produto** (acabamento, durabilidade)  
+      - **Usabilidade** (funcionalidade, ergonomia)  
+      - **Atendimento** (suporte, canal de contato)  
+      - **Preço** (custo-benefício, promoções)  
+   b. Liste brevemente os *insights* ou reclamações mais frequentes para cada tópico dentro do grupo.
+
+3. **Síntese Estratégica**  
+   - Para cada grupo, escreva um parágrafo estratégico que resuma:  
+     1. Pontos fortes a serem mantidos ou destacados.  
+     2. Principais problemas/áreas de melhoria.  
+     3. Sugestões de ação para as áreas de Produto, Logística, Atendimento e Precificação.
+
+4. **Visão Geral Consolidada**  
+   - Ao final, apresente uma visão geral com recomendações de alto nível para otimizar a experiência do cliente e as operações, apoiando decisões estratégicas.
+
+Comentários a serem analisados:  
 {comentarios_formatados}
 
 Resumo:
