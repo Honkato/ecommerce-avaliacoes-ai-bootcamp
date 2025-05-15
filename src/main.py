@@ -1,67 +1,17 @@
-import logging
 from typing import Callable
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
-from langchain_ollama import OllamaLLM
-
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-#     datefmt="%Y-%m-%d %H:%M:%S",
-# )
-#
-# logger = logging.getLogger(__name__)
-
-import csv
 import sqlite3
 
-def csv_to_sqlite(csv_filepath, db_filepath, table_name):
-    """Imports a CSV file into a SQLite database table.
-
-    Args:
-        csv_filepath: Path to the CSV file.
-        db_filepath: Path to the SQLite database file.
-        table_name: Name of the table to create or append to.
-    """
-    try:
-        with open(csv_filepath, 'r') as file:
-            csv_reader = csv.reader(file)
-            header = next(csv_reader)
-            data = list(csv_reader)
-
-        with sqlite3.connect(db_filepath) as connection:
-            cursor = connection.cursor()
-
-            # Create table if it doesn't exist
-            placeholders = ', '.join(['?'] * len(header))
-            create_table_query = f"CREATE TABLE IF NOT EXISTS {table_name} ({', '.join(header)});"
-            cursor.execute(create_table_query)
-
-            # Insert data into table
-            insert_query = f"INSERT INTO {table_name} VALUES ({placeholders});"
-            cursor.executemany(insert_query, data)
-
-            connection.commit()
-
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-def load_model(model_name) -> RunnableSerializable[dict, str]:
-    template = """
-    you are an ecommerce professional that answers about stock, and reviews
-    another colleague needs help from you and will ask questions about it
-    colleague: {input}
-    """
-
-    prompt = ChatPromptTemplate.from_template(template)
-
-    model = OllamaLLM(model=model_name, name=model_name)
-
-    chain = prompt | model
-
-    return chain
+from config.agents import get_agent_sumarizacao, get_agent_gerador_topicos
+from config.database import csv_to_sqlite
+from config.model import load_model
+from config.vectorstore import generate_vector_db_to_retrieve_by_product_name, \
+    generate_vector_db_to_retrieve_by_product_brand, generate_vector_db_to_retrieve_by_site_category_lv1, \
+    generate_vector_db_to_retrieve_by_site_category_lv2, format_docs
+from retrievers import product_brand_retriever, product_name_retriever, site_category_lv1_retriever, \
+    site_category_lv2_retriever
 
 
 def get_app() -> FastAPI:
@@ -96,20 +46,15 @@ def get_app() -> FastAPI:
         """
 
         def startup() -> None:
-            #tenho quase certeza q é gambiarra mas funcionou faze oq
             class Consts:
-                db_filepath = None
-                models: RunnableSerializable[dict, str] = None
-            #pegar database
+                model: RunnableSerializable[dict, str] = None
+
             app.consts = Consts()
 
             csv_filepath = rf'./src/B2W-Reviews01.csv'
-            db_filepath = rf'./my_database.db'
-            table_name = 'reviews'
-            csv_to_sqlite(csv_filepath, db_filepath, table_name)
-            app.consts.db_filepath = db_filepath
+            csv_to_sqlite(csv_filepath)
             #carregar os modelos, assim podemos carregar os diferentes modelos aqui e utilizalos quando quisermos
-            app.consts.models = load_model('mistral')
+            app.consts.model = load_model('mistral')
             pass
 
         return startup
@@ -125,36 +70,54 @@ app = get_app()
 async def root():
     return {"message": "Hello World"}
 
-@app.get("/models")
-async def models():
-    return {"message": app.consts.models.name}
+@app.get("/model")
+async def model():
+    return {"message": app.consts.model}
 
-def select_distinct(columns):
-    result = []
-    with sqlite3.connect(app.consts.db_filepath) as connection:
-        query = f"SELECT DISTINCT {columns} FROM reviews"
-        cursor = connection.cursor()
-        cursor.execute(query)
-        print(cursor.fetchone())
 
-        result = cursor.fetchall()
-        print(result)
-    return result
-@app.get("/product_brand")
-async def brands():
-    return select_distinct('product_brand')
+@app.get("/product_brand/:product_brand")
+async def brands(product_brand):
+    return product_brand_retriever(product_brand)
 
-@app.get("/site_category_lv1")
-async def brands():
-    return select_distinct('site_category_lv1')
+@app.get("/product_name/:product_name")
+async def product_name(product_name):
+    return product_name_retriever(product_name)
 
-@app.get("/site_category_lv2")
-async def brands():
-    return select_distinct('site_category_lv2')
+@app.get("/site_category_lv1/:site_category_lv1")
+async def site_category_lv1(site_category_lv1):
+    return site_category_lv1_retriever(site_category_lv1)
 
-@app.get("/site_category_lvs")
-async def brands():
-    return select_distinct('site_category_lv1, site_category_lv2')
+@app.get("/site_category_lv2/:site_category_lv2")
+async def site_category_lv2(site_category_lv2):
+    return site_category_lv2_retriever(site_category_lv2)
+
+@app.get("/search/:search_type/:search_query")
+async def product_name(search_type, search_query):
+    match search_type:
+        case 'product_brand':
+            retriever_result = product_brand_retriever(search_query)
+        case 'product_name':
+            retriever_result = product_name_retriever(search_query)
+        case 'site_category_lv1':
+            retriever_result = site_category_lv1_retriever(search_query)
+        case 'site_category_lv2':
+            retriever_result = site_category_lv2_retriever(search_query)
+        case _:
+            return
+    model = app.consts.model
+    agent_gerador_topicos = get_agent_gerador_topicos(model)
+    topicos = agent_gerador_topicos.invoke(retriever_result)
+    print(topicos)
+    agent_sumarizacao = get_agent_sumarizacao(model, topicos)
+    sumarizacao = agent_sumarizacao.invoke(retriever_result)
+    return {
+        'sumarizacao':sumarizacao,
+        'topicos':topicos,
+        'retriever_result':retriever_result,
+    }
+
+
+
 
 @app.post("/chat")
 async def chat(message: str):

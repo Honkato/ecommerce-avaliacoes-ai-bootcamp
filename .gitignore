@@ -1,5 +1,6 @@
-my_database.db
-
+*.db
+*.faiss
+*.pkl
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
