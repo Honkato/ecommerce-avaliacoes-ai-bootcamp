@@ -14,6 +14,7 @@ def generate_vector_db_to_retrieve_by_product_name(top_k: int) -> VectorStoreRet
         for row in other_columns:
             product_name = row[3]
             metadata = {
+                "product_id": row[2],
                 "product_brand": row[4],
                 "site_category_lv1": row[5],
                 "site_category_lv2": row[6],
@@ -40,6 +41,7 @@ def generate_vector_db_to_retrieve_by_product_brand(top_k: int) -> VectorStoreRe
         for row in other_columns:
             product_name = row[4]
             metadata = {
+                "product_id": row[2],
                 "product_name": row[3],
                 "site_category_lv1": row[5],
                 "site_category_lv2": row[6],
@@ -67,6 +69,7 @@ def generate_vector_db_to_retrieve_by_site_category_lv1(top_k: int) -> VectorSto
         for row in other_columns:
             category_lv1 = row[5]  # assumindo que esse é o nome do produto
             metadata = {
+                "product_id": row[2],
                 "product_name": row[3],
                 "product_brand": row[4],
                 "site_category_lv2": row[6],
@@ -93,6 +96,7 @@ def generate_vector_db_to_retrieve_by_site_category_lv2(top_k: int) -> VectorSto
         for row in other_columns:
             site_category_lv2 = row[6]
             metadata = {
+                "product_id": row[2],
                 "product_name": row[3],
                 "product_brand": row[4],
                 "site_category_lv1": row[5],
@@ -110,42 +114,3 @@ def generate_vector_db_to_retrieve_by_site_category_lv2(top_k: int) -> VectorSto
                               allow_dangerous_deserialization=True)
     retriever = db.as_retriever(search_type='similarity', search_kwargs={"k": top_k})
     return retriever
-
-
-## ARRUMAR FUNÇÃO AQUI, TA MUITO RUIM! TA CONFUNDINDO RECOMMEND TO A FRIEND COM O OVERALL RATING
-def format_docs(documents):
-    """
-    Formata dinamicamente os campos presentes em cada documento, usando rótulos amigáveis.
-    Repete a Categoria Principal no topo e também no metadata (caso exista).
-    """
-
-    # Mapeamento de chaves para rótulos amigáveis
-    label_map = {
-        "product_name": "Produto",
-        "product_brand": "Marca",
-        "site_category_lv1": "Categoria",
-        "site_category_lv2": "Subcategoria",
-        "review_title": "Título da Avaliação",
-        "overall_rating": "Avaliação Geral",
-        "recommend_to_a_friend": "Recomendaria a um amigo?",
-        "review_text": "Comentário"
-    }
-
-    formatted = []
-    for doc in documents:
-        lines = []
-
-        # Categoria Principal (do page_content)
-        categoria_principal = getattr(doc, "page_content", None)
-        if categoria_principal:
-            lines.append(f"Categoria Principal: {categoria_principal}")
-
-        # Campos do metadata (com rótulos amigáveis)
-        for key, value in doc.metadata.items():
-            label = label_map.get(key, key.replace('_', ' ').capitalize())
-            lines.append(f"{label}: {value}")
-
-        lines.append("-" * 60)
-        formatted.append("\n".join(lines))
-
-    return "\n".join(formatted)

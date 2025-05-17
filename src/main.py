@@ -7,9 +7,6 @@ import sqlite3
 from config.agents import get_agent_sumarizacao, get_agent_gerador_topicos
 from config.database import csv_to_sqlite
 from config.model import load_model
-from config.vectorstore import generate_vector_db_to_retrieve_by_product_name, \
-    generate_vector_db_to_retrieve_by_product_brand, generate_vector_db_to_retrieve_by_site_category_lv1, \
-    generate_vector_db_to_retrieve_by_site_category_lv2, format_docs
 from retrievers import product_brand_retriever, product_name_retriever, site_category_lv1_retriever, \
     site_category_lv2_retriever
 
@@ -106,15 +103,29 @@ async def product_name(search_type, search_query):
             return
     model = app.consts.model
     agent_gerador_topicos = get_agent_gerador_topicos(model)
-    topicos = agent_gerador_topicos.invoke(retriever_result)
-    print(topicos)
-    agent_sumarizacao = get_agent_sumarizacao(model, topicos)
-    sumarizacao = agent_sumarizacao.invoke(retriever_result)
-    return {
-        'sumarizacao':sumarizacao,
-        'topicos':topicos,
-        'retriever_result':retriever_result,
-    }
+    tentativa = 0
+    while True:
+        try:
+            topicos = agent_gerador_topicos.invoke(retriever_result)
+            agent_sumarizacao = get_agent_sumarizacao(model, topicos)
+            sumarizacao = agent_sumarizacao.invoke({"query":retriever_result})
+            return {
+                'status': 'ok',
+                'sumarizacao': sumarizacao,
+                'topicos': topicos,
+                'retriever_result': retriever_result,
+            }
+        except Exception as e:
+            print(e)
+            tentativa += 1
+            if tentativa >= 5:
+                return {
+                'status':'error',
+                'sumarizacao':None,
+                'topicos':None,
+                'retriever_result':None,
+            }
+
 
 
 

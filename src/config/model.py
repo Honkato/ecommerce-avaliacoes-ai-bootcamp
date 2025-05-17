@@ -1,20 +1,12 @@
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableSerializable
-from langchain_ollama import OllamaLLM, OllamaEmbeddings
+from langchain_ollama import OllamaLLM, OllamaEmbeddings, ChatOllama
 
 
-def load_model(model_name) -> RunnableSerializable[dict, str]:
-    template = """
-    you are an ecommerce professional that answers about stock, and reviews
-    another colleague needs help from you and will ask questions about it
-    colleague: {input}
-    """
+def load_model(model_name) -> ChatOllama:
+    model = ChatOllama(model=model_name, name=model_name)
 
-    prompt = ChatPromptTemplate.from_template(template)
-
-    model = OllamaLLM(model=model_name, name=model_name)
-
-    chain = prompt | model
+    chain = model
 
     return chain
 
