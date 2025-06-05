@@ -4,6 +4,7 @@ from langchain_core.vectorstores import VectorStoreRetriever
 import os
 from config.database import select_distinct_all
 from config.model import load_embedding_model
+from typing import List, Tuple
 
 embedding_model = load_embedding_model()
 
@@ -67,7 +68,7 @@ def generate_vector_db_to_retrieve_by_site_category_lv1(top_k: int) -> VectorSto
     documents = []
     if not os.path.exists("./vector_db_site_category_lv1"):
         for row in other_columns:
-            category_lv1 = row[5]  # assumindo que esse é o nome do produto
+            category_lv1 = row[5]  
             metadata = {
                 "product_id": row[2],
                 "product_name": row[3],
