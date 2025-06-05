@@ -14,7 +14,6 @@ def format_docs(documents):
     Repete a Categoria Principal no topo e também no metadata (caso exista).
     """
 
-    # Mapeamento de chaves para rótulos amigáveis
     label_map = {
         "product_id":"Id",
         "product_name": "Produto",
@@ -30,12 +29,10 @@ def format_docs(documents):
     formatted = []
     for doc in documents:
         dicionario = {}
-        # Categoria Principal (do page_content)
         categoria_principal = getattr(doc, "page_content", None)
         if categoria_principal:
             dicionario["Categoria Principal"] = categoria_principal
 
-        # Campos do metadata (com rótulos amigáveis)
         # print(doc.metadata.items())
 
         for key, value in doc.metadata.items():

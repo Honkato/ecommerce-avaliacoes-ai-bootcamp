@@ -139,6 +139,30 @@ async def search_and_summarize(search_type: str, search_query: str):
                     'topicos': None,
                     'retriever_result': None,
                 }
+            
+@app.get("/search/:type/:query")
+async def sentimentos(type, query):
+    match type:
+        case 'product_brand':
+            retriever_result = product_brand_retriever(query)
+        case 'product_name':
+            retriever_result = product_name_retriever(query)
+        case 'site_category_lv1':
+            retriever_result = site_category_lv1_retriever(query)
+        case 'site_category_lv2':
+            retriever_result = site_category_lv2_retriever(query)
+        case _:
+            return
+    model = app.consts.model
+    agent_sentimentos = get_agent_sentimentos(model)
+    listResult = []
+    for comment in retriever_result:
+        sentimentos = agent_sentimentos.invoke({"query":comment})
+        listResult.append(sentimentos)
+    return {
+        "sentimentos":listResult
+    }  
+
 
 
 @app.post("/chat")
@@ -158,6 +182,21 @@ async def chat(message: str):
     # Chama o agente RAG que foi criado em startup
     resposta: str = app.consts.chat_agent.run(message)
     return {"resposta": resposta}
+
+## NAO TESTADO AINDA, IGNORAR!!!!!!!!!!!!!! Ass: isabelli
+
+
+# @app.get("/sentimento_geral")
+# async def sentimento_geral():
+#     """
+#     Esse endpoint invoca o agente de sentimento geral que busca os 1000 comentários
+#     e devolve um objeto SentimentosModel como dict.
+#     """
+#     # Invoca o callable que faz toda a coleta e análise
+#     resultado = app.consts.sentimento_geral_agent()
+#     # Retorna como JSON (dicionário) para o usuário
+#     return resultado.dict()
+
 
 
 if __name__ == "__main__":

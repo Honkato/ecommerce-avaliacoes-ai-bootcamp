@@ -9,7 +9,6 @@ from config.vectorstore import generate_vector_db_to_retrieve_by_site_category_l
 from config.vectorstore import generate_vector_db_to_retrieve_by_site_category_lv2
 
 
-
 @tool
 def create_list_of_topics(list_of_topics: list[str]) -> Topics:
     """
