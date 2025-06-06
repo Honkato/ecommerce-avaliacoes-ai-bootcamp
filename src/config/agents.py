@@ -96,7 +96,7 @@ Agora, aponte:
 {query}
 """,
         partial_variables={
-            "topics": ", ".join(topicos),
+            "topics": topicos,
             "format_instructions": parser.get_format_instructions()
         }
     )

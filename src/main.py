@@ -9,7 +9,8 @@ from dotenv import load_dotenv
 from config.agents import (
     get_agent_sumarizacao,
     get_agent_gerador_topicos,
-    get_agent_chat_rag,           
+    get_agent_chat_rag, 
+    get_agent_sentimentos          
 )
 from config.database import csv_to_sqlite
 from config.model import load_model
@@ -140,7 +141,7 @@ async def search_and_summarize(search_type: str, search_query: str):
                     'retriever_result': None,
                 }
             
-@app.get("/search/:type/:query")
+@app.get("/search/sentimentos/{search}/{query}")
 async def sentimentos(type, query):
     match type:
         case 'product_brand':
